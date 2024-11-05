@@ -30,7 +30,7 @@ on:
       #  run: echo Hello, world!
 
 
-  jobs:
+  job:
     test:
       runs-on: ubuntu-latest
       
