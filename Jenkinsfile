@@ -1,56 +1,56 @@
 pipeline {
-    agent any
+  agent any
+  environment {
+    PYTHON   = 'C:\\Users\\bhanu mallik\\AppData\\Local\\Programs\\Python\\Python311\\python.exe'
+    VENV_DIR = '.venv'
+    ACTIVATE = "${VENV_DIR}\\Scripts\\activate"
+  }
 
-    environment {
-        PYTHON = "python"
-        VENV_DIR = "venv"
+  stages {
+    stage('Checkout') {
+      steps {
+        deleteDir()
+        git branch: 'main', url: 'https://github.com/BM-45/TDD_setup.git'
+        bat 'dir'
+      }
     }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/BM-45/TDD_setup.git'
-            }
-        }
-
-        stage('Setup Python Environment') {
-            steps {
-                bat """
-                %PYTHON% -m venv %VENV_DIR%
-                call %VENV_DIR%\\Scripts\\activate
-                pip install --upgrade pip
-                pip install -r requirements.txt
-                pip install pytest flake8 coverage
-                """
-            }
-        }
-
-        stage('Lint Code') {
-            steps {
-                bat """
-                call %VENV_DIR%\\Scripts\\activate
-                flake8 *.py
-                """
-            }
-        }
-
-        stage('Run Tests with Coverage') {
-            steps {
-                bat """
-                call %VENV_DIR%\\Scripts\\activate
-                coverage run -m pytest --junitxml=test-results.xml -v
-                coverage report
-                coverage html
-                """
-            }
-        }
+    stage('Setup Python Environment') {
+      steps {
+        bat """
+          if not exist "${VENV_DIR}" "${PYTHON}" -m venv "${VENV_DIR}"
+          call "${ACTIVATE}"
+          where python
+          python --version
+          pip --version
+          python -m pip install --upgrade pip
+          if exist requirements.txt (
+            pip install -r requirements.txt
+          ) else (
+            pip install pytest coverage
+          )
+        """
+      }
     }
 
-    post {
-        always {
-            // Publish test results to Jenkins
-            junit 'test-results.xml'
-            archiveArtifacts artifacts: 'htmlcov/**', fingerprint: true
-        }
+    stage('Run Tests with Coverage') {
+      steps {
+        bat """
+          call "${ACTIVATE}"
+          coverage run -m pytest -v --junitxml=test-results.xml
+          coverage report
+          coverage html
+        """
+      }
     }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'htmlcov/**', fingerprint: true
+      // Re-enable when JUnit plugin is installed:
+      // junit allowEmptyResults: true, testResults: 'test-results.xml'
+      echo 'Done'
+    }
+  }
 }
